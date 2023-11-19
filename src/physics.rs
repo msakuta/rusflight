@@ -22,7 +22,7 @@ impl PhysicsSet {
         let mut collider_set = ColliderSet::new();
 
         /* Create the ground. */
-        let collider = ColliderBuilder::cuboid(100.0, 0.1, 100.0).build();
+        let collider = ColliderBuilder::cuboid(500.0, 0.1, 500.0).build();
         collider_set.insert(collider);
 
         /* Create other structures necessary for the simulation. */
@@ -56,7 +56,7 @@ impl PhysicsSet {
     pub(crate) fn new_body(&mut self) -> (RigidBodyHandle, ColliderHandle) {
         /* Create the bounding ball. */
         let rigid_body = RigidBodyBuilder::dynamic()
-            .translation(vector![0.0, 20.0, 0.0])
+            .translation(vector![0.0, 200.0, 0.0])
             .linear_damping(0.001)
             .build();
         let collider = ColliderBuilder::cuboid(13.06 * 0.5, 5.64 * 0.5, 19.43 * 0.5)

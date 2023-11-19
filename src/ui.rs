@@ -5,6 +5,14 @@ const THRUST_BAR_X: f32 = -3.0;
 const THRUST_BAR_Y: f32 = -3.0;
 const THRUST_BAR_WIDTH: f32 = 0.2;
 const THRUST_BAR_HEIGHT: f32 = 1.0;
+const AILERON_BAR_X: f32 = 0.;
+const AILERON_BAR_Y: f32 = -3.5;
+const AILERON_BAR_WIDTH: f32 = 1.0;
+const AILERON_BAR_HEIGHT: f32 = 0.2;
+const ELEVATOR_BAR_X: f32 = 2.5;
+const ELEVATOR_BAR_Y: f32 = -3.0;
+const ELEVATOR_BAR_WIDTH: f32 = 0.2;
+const ELEVATOR_BAR_HEIGHT: f32 = 1.0;
 const RUDDER_BAR_X: f32 = 0.;
 const RUDDER_BAR_Y: f32 = -3.0;
 const RUDDER_BAR_WIDTH: f32 = 1.0;
@@ -19,6 +27,10 @@ pub(crate) struct Ui {
     // ui_grid_obj: Box<dyn Object>,
     thrust_bar_back: Gm<Mesh, ColorMaterial>,
     thrust_bar: Gm<Mesh, ColorMaterial>,
+    aileron_bar_back: Gm<Mesh, ColorMaterial>,
+    aileron_bar: Gm<Mesh, ColorMaterial>,
+    elevator_bar_back: Gm<Mesh, ColorMaterial>,
+    elevator_bar: Gm<Mesh, ColorMaterial>,
     rudder_bar_back: Gm<Mesh, ColorMaterial>,
     rudder_bar: Gm<Mesh, ColorMaterial>,
     contact_back: Gm<Mesh, ColorMaterial>,
@@ -87,6 +99,66 @@ impl Ui {
                 * Mat4::from_nonuniform_scale(THRUST_BAR_WIDTH, THRUST_BAR_HEIGHT, 1.),
         );
 
+        let mut aileron_bar_back = Gm::new(
+            Mesh::new(&context, &bar),
+            ColorMaterial::new(
+                &context,
+                &CpuMaterial {
+                    albedo: Srgba::new(0, 0, 0, 191),
+                    ..Default::default()
+                },
+            ),
+        );
+        aileron_bar_back.set_transformation(
+            Mat4::from_translation(Vec3::new(AILERON_BAR_X, AILERON_BAR_Y, 0.))
+                * Mat4::from_nonuniform_scale(AILERON_BAR_WIDTH, AILERON_BAR_HEIGHT, 1.),
+        );
+
+        let mut aileron_bar = Gm::new(
+            Mesh::new(&context, &bar),
+            ColorMaterial::new(
+                &context,
+                &CpuMaterial {
+                    albedo: Srgba::new(0, 127, 255, 255),
+                    ..Default::default()
+                },
+            ),
+        );
+        aileron_bar.set_transformation(
+            Mat4::from_translation(Vec3::new(AILERON_BAR_X, AILERON_BAR_Y, 0.))
+                * Mat4::from_nonuniform_scale(AILERON_BAR_WIDTH, AILERON_BAR_HEIGHT, 1.),
+        );
+
+        let mut elevator_bar_back = Gm::new(
+            Mesh::new(&context, &bar),
+            ColorMaterial::new(
+                &context,
+                &CpuMaterial {
+                    albedo: Srgba::new(0, 0, 0, 191),
+                    ..Default::default()
+                },
+            ),
+        );
+        elevator_bar_back.set_transformation(
+            Mat4::from_translation(Vec3::new(ELEVATOR_BAR_X, ELEVATOR_BAR_Y, 0.))
+                * Mat4::from_nonuniform_scale(ELEVATOR_BAR_WIDTH, ELEVATOR_BAR_HEIGHT, 1.),
+        );
+
+        let mut elevator_bar = Gm::new(
+            Mesh::new(&context, &bar),
+            ColorMaterial::new(
+                &context,
+                &CpuMaterial {
+                    albedo: Srgba::new(255, 0, 255, 255),
+                    ..Default::default()
+                },
+            ),
+        );
+        elevator_bar.set_transformation(
+            Mat4::from_translation(Vec3::new(ELEVATOR_BAR_X, ELEVATOR_BAR_Y, 0.))
+                * Mat4::from_nonuniform_scale(ELEVATOR_BAR_WIDTH, ELEVATOR_BAR_HEIGHT, 1.),
+        );
+
         let mut rudder_bar_back = Gm::new(
             Mesh::new(&context, &bar),
             ColorMaterial::new(
@@ -152,6 +224,10 @@ impl Ui {
             // ui_grid_obj: Box::new(ui_grid_obj),
             thrust_bar_back,
             thrust_bar,
+            aileron_bar_back,
+            aileron_bar,
+            elevator_bar_back,
+            elevator_bar,
             rudder_bar_back,
             rudder_bar,
             contact_back,
@@ -165,6 +241,10 @@ impl Ui {
             // self.ui_grid_obj.as_ref(),
             &self.thrust_bar_back,
             &self.thrust_bar,
+            &self.aileron_bar_back,
+            &self.aileron_bar,
+            &self.elevator_bar_back,
+            &self.elevator_bar,
             &self.rudder_bar_back,
             &self.rudder_bar,
             &self.contact_back,
@@ -182,6 +262,34 @@ impl Ui {
                 THRUST_BAR_Y + THRUST_BAR_HEIGHT * (thrust - 1.),
                 0.,
             )) * Mat4::from_nonuniform_scale(THRUST_BAR_WIDTH, THRUST_BAR_HEIGHT * thrust, 1.),
+        );
+    }
+
+    pub(crate) fn update_aileron(&mut self, aileron: f32) {
+        self.aileron_bar.set_transformation(
+            Mat4::from_translation(Vec3::new(
+                AILERON_BAR_X + AILERON_BAR_WIDTH * -aileron * 0.5,
+                AILERON_BAR_Y,
+                0.,
+            )) * Mat4::from_nonuniform_scale(
+                AILERON_BAR_WIDTH * -aileron * 0.5,
+                AILERON_BAR_HEIGHT,
+                1.,
+            ),
+        );
+    }
+
+    pub(crate) fn update_elevator(&mut self, elevator: f32) {
+        self.elevator_bar.set_transformation(
+            Mat4::from_translation(Vec3::new(
+                ELEVATOR_BAR_X,
+                ELEVATOR_BAR_Y + ELEVATOR_BAR_HEIGHT * -elevator * 0.5,
+                0.,
+            )) * Mat4::from_nonuniform_scale(
+                ELEVATOR_BAR_WIDTH,
+                ELEVATOR_BAR_HEIGHT * -elevator * 0.5,
+                1.,
+            ),
         );
     }
 

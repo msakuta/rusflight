@@ -111,7 +111,7 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
         })
         .collect();
 
-    let grid = grid_mesh(10, 10, 10., 0.1);
+    let grid = grid_mesh(50, 50, 10., 0.1);
     let grid_obj = Gm::new(
         Mesh::new(&context, &grid),
         ColorMaterial::new(
@@ -156,6 +156,8 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
                 &frame_input,
             );
             ui.update_thrust(vehicle.thrust);
+            ui.update_aileron(vehicle.aileron);
+            ui.update_elevator(vehicle.elevator);
             ui.update_rudder(vehicle.rudder);
             ui.update_has_contact(vehicle.touching_ground);
             transform = vehicle.transform(&physics.rigid_body_set);
