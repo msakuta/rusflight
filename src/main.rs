@@ -1,3 +1,4 @@
+mod grid;
 mod mqo;
 mod orbit_control_ex;
 mod sphere;
@@ -5,6 +6,7 @@ mod sphere;
 use std::error::Error;
 
 use crate::orbit_control_ex::OrbitControlEx;
+use grid::grid_mesh;
 use mqo::{load_mqo, load_mqo_scale};
 use sphere::uv_sphere;
 use three_d::*;
@@ -66,7 +68,7 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
         &context, &right_tex, &left_tex, &top_tex, &top_tex, &front_tex, &back_tex,
     );
 
-    let ident = Matrix4::identity();
+    // let ident = Matrix4::identity();
 
     let mut model_src = loaded.get("F15.mqo")?;
     let models = load_mqo_scale(&mut model_src, None, 0.01, &|| ())?;
@@ -88,23 +90,29 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
                         ),
                         ..Default::default()
                     },
-                    // &CpuMaterial {
-                    //     albedo: Color {
-                    //         r: 0,
-                    //         g: 255,
-                    //         b: 0,
-                    //         a: 200,
-                    //     },
-                    //     ..Default::default()
-                    // }
                 ),
             );
             obj.material.render_states.cull = Cull::Back;
-            obj.material.normal_scale = 1.;
-            obj.set_transformation(ident);
             obj
         })
         .collect();
+
+    let grid = grid_mesh(10, 10, 10., 0.1);
+    let grid_obj = Gm::new(
+        Mesh::new(&context, &grid),
+        ColorMaterial::new(
+            &context,
+            &CpuMaterial {
+                albedo: Srgba {
+                    r: 0,
+                    g: 255,
+                    b: 0,
+                    a: 200,
+                },
+                ..Default::default()
+            },
+        ),
+    );
 
     let light = AmbientLight::new(&context, 0.1, Color::WHITE);
     let point = PointLight::new(
@@ -169,8 +177,8 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
             .screen()
             .clear(ClearState::default())
             .render(&camera, &[&skybox], &[])
-            .render(&camera, &meshes, &[&light, &point]);
-        // .render(&camera, &render_models[..], &[&light, &point]);
+            .render(&camera, &meshes, &[&light, &point])
+            .render(&camera, &[&grid_obj], &[]);
 
         FrameOutput::default()
     });
