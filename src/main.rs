@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
 
 pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
     let window = Window::new(WindowSettings {
-        title: "Rusty-space".to_string(),
+        title: "Rusflight".to_string(),
         min_size: (512, 512),
         max_size: Some((1280, 720)),
         ..Default::default()
