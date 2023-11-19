@@ -80,7 +80,14 @@ impl Vehicle {
         if self.rudder_decrease {
             self.rudder = (self.rudder - delta_time as f32).max(-1.);
         }
-        body.apply_impulse(Vector3::new(0., 0., 100. * self.thrust), true);
+        if self.touching_ground {
+            let torque = Vector3::new(0., 300. * self.thrust * self.rudder, 0.);
+            let global_torque = body.rotation().transform_vector(&torque);
+            body.apply_torque_impulse(global_torque, true);
+        }
+        let impulse = Vector3::new(0., 0., 100. * self.thrust);
+        let forward_impulse = body.rotation().transform_vector(&impulse);
+        body.apply_impulse(forward_impulse, true);
     }
 
     pub fn transform(&self, rigid_body_set: &RigidBodySet) -> Mat4 {
