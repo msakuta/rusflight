@@ -3,6 +3,7 @@ mod mqo;
 mod orbit_control_ex;
 mod physics;
 mod sphere;
+mod ui;
 mod vehicle;
 
 use std::error::Error;
@@ -11,6 +12,7 @@ use crate::{orbit_control_ex::OrbitControlEx, physics::PhysicsSet};
 use grid::grid_mesh;
 use mqo::load_mqo_scale;
 use three_d::*;
+use ui::Ui;
 use vehicle::Vehicle;
 
 #[tokio::main]
@@ -50,6 +52,8 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
         .pan_speed(0.01)
         .zoom_speed(0.01)
         .build();
+
+    let mut ui = Ui::new(&window, &context);
 
     let resources = [
         "assets/F15.mqo",
@@ -140,7 +144,11 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
     window.render_loop(move |mut frame_input| {
         physics.step();
 
-        vehicle.update(frame_input.elapsed_time * 1e-3, &mut physics.rigid_body_set);
+        vehicle.update(
+            frame_input.elapsed_time * 1e-3,
+            &mut physics.rigid_body_set,
+            &frame_input,
+        );
         let transform = vehicle.transform(&physics.rigid_body_set);
 
         for mesh in &mut meshes {
@@ -179,7 +187,8 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
             .clear(ClearState::default())
             .render(&camera, &[&skybox], &[])
             .render(&camera, &meshes, &[&light, &point])
-            .render(&camera, &[&grid_obj], &[]);
+            .render(&camera, &[&grid_obj], &[])
+            .render(&ui.camera, &[ui.ui_grid_obj.as_ref()], &[]);
 
         FrameOutput::default()
     });
