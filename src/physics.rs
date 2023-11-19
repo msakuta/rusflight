@@ -53,10 +53,11 @@ impl PhysicsSet {
         /* Create the bounding ball. */
         let rigid_body = RigidBodyBuilder::dynamic()
             .translation(vector![0.0, 20.0, 0.0])
+            .linear_damping(0.001)
             .build();
         let collider = ColliderBuilder::cuboid(13.06 * 0.5, 5.64 * 0.5, 19.43 * 0.5)
             .restitution(0.7)
-            .friction(0.01)
+            .friction(0.001)
             .build();
         let body_handle = self.rigid_body_set.insert(rigid_body);
         self.collider_set

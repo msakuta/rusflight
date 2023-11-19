@@ -47,7 +47,7 @@ impl Vehicle {
             }
         }
         if self.thrust_increase {
-            self.thrust = dbg!((self.thrust + delta_time as f32).min(1.));
+            self.thrust = (self.thrust + delta_time as f32).min(1.);
         }
         if self.thrust_decrease {
             self.thrust = (self.thrust - delta_time as f32).max(0.);

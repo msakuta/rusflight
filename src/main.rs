@@ -149,6 +149,7 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
             &mut physics.rigid_body_set,
             &frame_input,
         );
+        ui.update_thrust(vehicle.thrust);
         let transform = vehicle.transform(&physics.rigid_body_set);
 
         for mesh in &mut meshes {
@@ -182,13 +183,15 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
         }
         control.handle_events(&mut camera, &mut frame_input.events);
 
-        frame_input
-            .screen()
+        let render_target = frame_input.screen();
+
+        render_target
             .clear(ClearState::default())
             .render(&camera, &[&skybox], &[])
             .render(&camera, &meshes, &[&light, &point])
-            .render(&camera, &[&grid_obj], &[])
-            .render(&ui.camera, &[ui.ui_grid_obj.as_ref()], &[]);
+            .render(&camera, &[&grid_obj], &[]);
+
+        ui.render(&render_target);
 
         FrameOutput::default()
     });
