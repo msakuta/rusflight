@@ -2,6 +2,7 @@ mod grid;
 mod mqo;
 mod orbit_control_ex;
 mod sphere;
+mod vehicle;
 
 use std::error::Error;
 
@@ -10,6 +11,7 @@ use grid::grid_mesh;
 use mqo::{load_mqo, load_mqo_scale};
 use sphere::uv_sphere;
 use three_d::*;
+use vehicle::Vehicle;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
@@ -73,7 +75,7 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
     let mut model_src = loaded.get("F15.mqo")?;
     let models = load_mqo_scale(&mut model_src, None, 0.01, &|| ())?;
     // let models = vec![uv_sphere(10)];
-    let meshes: Vec<_> = models
+    let mut meshes: Vec<_> = models
         .iter()
         .take(1)
         .map(|model| {
@@ -127,9 +129,9 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
         },
     );
 
-    // let mesh = uv_sphere(32);
-    // let mut body_context = BodyContext::new(&context, &mut loaded, &mesh);
-    // let mut bodies = load_astro_bodies(&commands, &mut body_context);
+    let mut vehicle = Vehicle::new();
+    vehicle.velo.z = 1.;
+    vehicle.avelo.y = 0.1;
 
     // main loop
     window.render_loop(move |mut frame_input| {
@@ -142,36 +144,12 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
         camera.set_viewport(viewport);
         control.handle_events(&mut camera, &mut frame_input.events);
 
-        // for body in &mut bodies {
-        //     apply_transform(
-        //         body,
-        //         &Matrix4::identity(),
-        //         frame_input.accumulated_time * 1e-3,
-        //     );
-        // }
+        vehicle.update(frame_input.elapsed_time * 1e-3);
+        let transform = vehicle.transform();
 
-        // fn get_render_models<'a, 'b>(
-        //     body: &'a AstroBody,
-        // ) -> Vec<&'b dyn three_d::Object>
-        // where
-        //     'a: 'b,
-        // {
-        //     let mut models = vec![body.model.as_ref()];
-        //     if let Some(ref cylinder) = body.orbit_model {
-        //         models.push(cylinder as &dyn three_d::Object);
-        //     }
-        //     for body in body.children.iter() {
-        //         models.extend(get_render_models(&body));
-        //     }
-        //     models
-        // }
-
-        // let mut render_models: Vec<&dyn three_d::Object> = vec![];
-        // for body in &bodies {
-        //     render_models.extend(get_render_models(body));
-        // }
-
-        // let obj = model;
+        for mesh in &mut meshes {
+            mesh.set_transformation(transform);
+        }
 
         frame_input
             .screen()
