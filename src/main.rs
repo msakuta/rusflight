@@ -6,7 +6,7 @@ mod sphere;
 mod ui;
 mod vehicle;
 
-use std::error::Error;
+use std::{cell::RefCell, error::Error, rc::Rc};
 
 use crate::{orbit_control_ex::OrbitControlEx, physics::PhysicsSet};
 use grid::grid_mesh;
@@ -33,8 +33,11 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
 
     let mut physics = PhysicsSet::new();
 
-    let mut vehicle = Vehicle::new(physics.new_body());
+    let vehicle = Vehicle::new(physics.new_body());
     let vehicle_pos = vehicle.pos(&physics.rigid_body_set);
+    let vehicle = Rc::new(RefCell::new(vehicle));
+    let vehicle2 = vehicle.clone();
+    physics.register_collision(move |e| vehicle2.borrow_mut().collide(e));
 
     let mut camera = Camera::new_perspective(
         window.viewport(),
@@ -144,13 +147,19 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
     window.render_loop(move |mut frame_input| {
         physics.step();
 
-        vehicle.update(
-            frame_input.elapsed_time * 1e-3,
-            &mut physics.rigid_body_set,
-            &frame_input,
-        );
-        ui.update_thrust(vehicle.thrust);
-        let transform = vehicle.transform(&physics.rigid_body_set);
+        let transform;
+        {
+            let mut vehicle = vehicle.borrow_mut();
+            vehicle.update(
+                frame_input.elapsed_time * 1e-3,
+                &mut physics.rigid_body_set,
+                &frame_input,
+            );
+            ui.update_thrust(vehicle.thrust);
+            ui.update_rudder(vehicle.rudder);
+            ui.update_has_contact(vehicle.touching_ground);
+            transform = vehicle.transform(&physics.rigid_body_set);
+        }
 
         for mesh in &mut meshes {
             mesh.set_transformation(transform);
@@ -168,12 +177,12 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
                 if *kind == Key::F {
                     follow = !follow;
                 } else if *kind == Key::R {
-                    vehicle.reset(&mut physics.rigid_body_set);
+                    vehicle.borrow_mut().reset(&mut physics.rigid_body_set);
                 }
             }
         }
         if follow {
-            let new_target = vehicle.pos(&physics.rigid_body_set);
+            let new_target = vehicle.borrow().pos(&physics.rigid_body_set);
             let target = control.target();
             control.set_target(new_target);
             let cpos = *camera.position();

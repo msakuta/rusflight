@@ -12,6 +12,8 @@ pub(crate) struct PhysicsSet {
     pub impulse_joint_set: ImpulseJointSet,
     pub multibody_joint_set: MultibodyJointSet,
     pub ccd_solver: CCDSolver,
+    collision_notify: Vec<Box<dyn FnMut(CollisionEvent)>>,
+    contact_notify: Vec<Box<dyn FnMut(ContactForceEvent)>>,
 }
 
 impl PhysicsSet {
@@ -46,10 +48,12 @@ impl PhysicsSet {
             impulse_joint_set,
             multibody_joint_set,
             ccd_solver,
+            collision_notify: vec![],
+            contact_notify: vec![],
         }
     }
 
-    pub(crate) fn new_body(&mut self) -> RigidBodyHandle {
+    pub(crate) fn new_body(&mut self) -> (RigidBodyHandle, ColliderHandle) {
         /* Create the bounding ball. */
         let rigid_body = RigidBodyBuilder::dynamic()
             .translation(vector![0.0, 20.0, 0.0])
@@ -58,16 +62,31 @@ impl PhysicsSet {
         let collider = ColliderBuilder::cuboid(13.06 * 0.5, 5.64 * 0.5, 19.43 * 0.5)
             .restitution(0.7)
             .friction(0.001)
+            .active_events(ActiveEvents::COLLISION_EVENTS | ActiveEvents::CONTACT_FORCE_EVENTS)
             .build();
         let body_handle = self.rigid_body_set.insert(rigid_body);
-        self.collider_set
-            .insert_with_parent(collider, body_handle, &mut self.rigid_body_set);
-        body_handle
+        let collider_handle =
+            self.collider_set
+                .insert_with_parent(collider, body_handle, &mut self.rigid_body_set);
+        (body_handle, collider_handle)
+    }
+
+    pub(crate) fn register_collision(&mut self, f: impl FnMut(CollisionEvent) + 'static) {
+        self.collision_notify.push(Box::new(f));
+    }
+
+    pub(crate) fn _register_contact(&mut self, f: impl FnMut(ContactForceEvent) + 'static) {
+        self.contact_notify.push(Box::new(f));
     }
 
     pub(crate) fn step(&mut self) {
         let physics_hooks = ();
-        let event_handler = ();
+        // let event_handler = ();
+
+        // Initialize the event collector.
+        let (collision_send, collision_recv) = rapier3d::crossbeam::channel::unbounded();
+        let (contact_force_send, contact_force_recv) = rapier3d::crossbeam::channel::unbounded();
+        let event_handler = ChannelEventCollector::new(collision_send, contact_force_send);
 
         self.physics_pipeline.step(
             &self.gravity,
@@ -84,5 +103,21 @@ impl PhysicsSet {
             &physics_hooks,
             &event_handler,
         );
+
+        while let Ok(collision_event) = collision_recv.try_recv() {
+            // Handle the collision event.
+            // println!("Received collision event: {:?}", collision_event);
+            for notify in &mut self.collision_notify {
+                notify(collision_event);
+            }
+        }
+
+        while let Ok(contact_force_event) = contact_force_recv.try_recv() {
+            // Handle the contact force event.
+            // println!("Received contact force event: {:?}", contact_force_event);
+            for notify in &mut self.contact_notify {
+                notify(contact_force_event);
+            }
+        }
     }
 }
