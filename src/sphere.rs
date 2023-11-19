@@ -3,7 +3,7 @@ use three_d_asset::{Indices, Positions, TriMesh, Vec2, Vec3};
 ///
 /// Returns a sphere mesh with radius 1 and center in `(0, 0, 0)` with UV mapping as longitude and latitude.
 ///
-pub(crate) fn uv_sphere(angle_subdivisions: u32) -> TriMesh {
+pub(crate) fn _uv_sphere(angle_subdivisions: u32) -> TriMesh {
     let mut positions = Vec::new();
     let mut indices = Vec::new();
     let mut normals = Vec::new();

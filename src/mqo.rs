@@ -10,6 +10,7 @@ use three_d_asset::{prelude::Vector3, Indices, Positions, TriMesh};
 
 pub struct Bone {}
 
+#[allow(dead_code)]
 pub fn load_mqo(
     is: &mut impl Read,
     bones: Option<&mut Vec<Bone>>,
@@ -24,7 +25,7 @@ pub fn load_mqo_scale(
     is: &mut impl Read,
     bones: Option<&mut Vec<Bone>>,
     scale: f32,
-    tex_callback: &MqoTextureCallback,
+    _tex_callback: &MqoTextureCallback,
 ) -> Result<Vec<TriMesh>, Box<dyn Error>> {
     let mut ret = vec![];
 
@@ -143,8 +144,8 @@ fn chunk_object(
     // Mesh::Attrib *patr;
     // char line[512], *cur;
     // Mesh::Index atr = (Mesh::Index)-1;
-    let mut shading = 0.;
-    let mut facet = 0.;
+    let mut _shading = 0.;
+    let mut _facet = 0.;
     // struct Bone *bone = NULL;
     let mut mirror = false;
     let mut mirror_axis = 0;
@@ -233,11 +234,11 @@ fn chunk_object(
             }
             b"shading" => {
                 let (_, s) = quotok(&r)?;
-                shading = parse_u8(&s)?;
+                _shading = parse_u8(&s)?;
             }
             b"facet" => {
                 let (_, s) = quotok(&r)?;
-                facet = parse_u8(&s)?;
+                _facet = parse_u8(&s)?;
             }
             b"depth" => {}
             b"mirror" => {

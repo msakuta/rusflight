@@ -31,9 +31,12 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
 
     let mut physics = PhysicsSet::new();
 
+    let mut vehicle = Vehicle::new(physics.new_body());
+    let vehicle_pos = vehicle.pos(&physics.rigid_body_set);
+
     let mut camera = Camera::new_perspective(
         window.viewport(),
-        vec3(-3.0, 1.0, 2.5),
+        vec3(-30.0, 10.0, 25.) + vehicle_pos,
         vec3(0.0, 0.0, 0.0),
         vec3(0.0, 1.0, 0.0),
         degrees(45.0),
@@ -41,14 +44,14 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
         1000.0,
     );
     let mut control = OrbitControlEx::builder()
-        .target(*camera.target())
+        .target(vehicle_pos)
         .min_distance(0.10)
         .max_distance(100.0)
-        .pan_speed(0.02)
+        .pan_speed(0.01)
         .zoom_speed(0.01)
         .build();
 
-    let mut resources = [
+    let resources = [
         "assets/F15.mqo",
         "assets/skybox_evening/front.jpg",
         "assets/skybox_evening/back.jpg",
@@ -118,11 +121,11 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
         ),
     );
 
-    let light = AmbientLight::new(&context, 0.1, Color::WHITE);
+    let light = AmbientLight::new(&context, 0.1, Srgba::WHITE);
     let point = PointLight::new(
         &context,
         10.,
-        Color::WHITE,
+        Srgba::WHITE,
         &Vec3::new(10., 0., -10.),
         Attenuation {
             constant: 0.,
@@ -131,12 +134,19 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
         },
     );
 
-    let mut vehicle = Vehicle::new(physics.new_body());
-    vehicle.velo.z = 1.;
-    vehicle.avelo.y = 0.1;
+    let mut follow = true;
 
     // main loop
     window.render_loop(move |mut frame_input| {
+        physics.step();
+
+        vehicle.update(frame_input.elapsed_time * 1e-3, &mut physics.rigid_body_set);
+        let transform = vehicle.transform(&physics.rigid_body_set);
+
+        for mesh in &mut meshes {
+            mesh.set_transformation(transform);
+        }
+
         let viewport = Viewport {
             x: 0,
             y: 0,
@@ -144,16 +154,25 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
             height: frame_input.viewport.height,
         };
         camera.set_viewport(viewport);
-        control.handle_events(&mut camera, &mut frame_input.events);
-
-        physics.step();
-
-        vehicle.update(frame_input.elapsed_time * 1e-3, &physics.rigid_body_set);
-        let transform = vehicle.transform(&physics.rigid_body_set);
-
-        for mesh in &mut meshes {
-            mesh.set_transformation(transform);
+        for e in &frame_input.events {
+            if let Event::KeyPress { kind, .. } = e {
+                if *kind == Key::F {
+                    follow = !follow;
+                } else if *kind == Key::R {
+                    vehicle.reset(&mut physics.rigid_body_set);
+                }
+            }
         }
+        if follow {
+            let new_target = vehicle.pos(&physics.rigid_body_set);
+            let target = control.target();
+            control.set_target(new_target);
+            let cpos = *camera.position();
+            let delta = cpos - target;
+            let up = *camera.up();
+            camera.set_view(new_target + delta, new_target, up);
+        }
+        control.handle_events(&mut camera, &mut frame_input.events);
 
         frame_input
             .screen()
