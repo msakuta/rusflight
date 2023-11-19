@@ -1,15 +1,15 @@
 mod grid;
 mod mqo;
 mod orbit_control_ex;
+mod physics;
 mod sphere;
 mod vehicle;
 
 use std::error::Error;
 
-use crate::orbit_control_ex::OrbitControlEx;
+use crate::{orbit_control_ex::OrbitControlEx, physics::PhysicsSet};
 use grid::grid_mesh;
-use mqo::{load_mqo, load_mqo_scale};
-use sphere::uv_sphere;
+use mqo::load_mqo_scale;
 use three_d::*;
 use vehicle::Vehicle;
 
@@ -28,6 +28,8 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
     })
     .unwrap();
     let context = window.gl();
+
+    let mut physics = PhysicsSet::new();
 
     let mut camera = Camera::new_perspective(
         window.viewport(),
@@ -73,7 +75,7 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
     // let ident = Matrix4::identity();
 
     let mut model_src = loaded.get("F15.mqo")?;
-    let models = load_mqo_scale(&mut model_src, None, 0.01, &|| ())?;
+    let models = load_mqo_scale(&mut model_src, None, 1. / 30.0, &|| ())?;
     // let models = vec![uv_sphere(10)];
     let mut meshes: Vec<_> = models
         .iter()
@@ -129,7 +131,7 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
         },
     );
 
-    let mut vehicle = Vehicle::new();
+    let mut vehicle = Vehicle::new(physics.new_body());
     vehicle.velo.z = 1.;
     vehicle.avelo.y = 0.1;
 
@@ -144,8 +146,10 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
         camera.set_viewport(viewport);
         control.handle_events(&mut camera, &mut frame_input.events);
 
-        vehicle.update(frame_input.elapsed_time * 1e-3);
-        let transform = vehicle.transform();
+        physics.step();
+
+        vehicle.update(frame_input.elapsed_time * 1e-3, &physics.rigid_body_set);
+        let transform = vehicle.transform(&physics.rigid_body_set);
 
         for mesh in &mut meshes {
             mesh.set_transformation(transform);
