@@ -135,7 +135,8 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
     let ground_obj = gen_ground(&context)?;
 
     let light = AmbientLight::new(&context, 0.1, Srgba::WHITE);
-    let dir_light = DirectionalLight::new(&context, 1., Srgba::WHITE, &Vec3::new(-1., -0.5, 1.));
+    let mut dir_light =
+        DirectionalLight::new(&context, 1., Srgba::WHITE, &Vec3::new(-1., -0.5, 1.));
 
     let mut follow = true;
 
@@ -191,6 +192,8 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
         control.handle_events(&mut camera, &mut frame_input.events);
 
         let render_target = frame_input.screen();
+
+        dir_light.generate_shadow_map(256, &meshes);
 
         render_target
             .clear(ClearState::default())
