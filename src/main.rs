@@ -1,15 +1,19 @@
 mod grid;
+mod ground;
 mod mqo;
 mod orbit_control_ex;
+mod perlin_noise;
 mod physics;
 mod sphere;
 mod ui;
 mod vehicle;
+mod xor128;
 
 use std::{cell::RefCell, error::Error, rc::Rc};
 
 use crate::{orbit_control_ex::OrbitControlEx, physics::PhysicsSet};
 use grid::grid_mesh;
+use ground::gen_ground;
 use mqo::load_mqo_scale;
 use three_d::*;
 use ui::Ui;
@@ -46,12 +50,12 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
         vec3(0.0, 1.0, 0.0),
         degrees(45.0),
         0.1,
-        1000.0,
+        10000.0,
     );
     let mut control = OrbitControlEx::builder()
         .target(vehicle_pos)
         .min_distance(0.10)
-        .max_distance(100.0)
+        .max_distance(1000.0)
         .pan_speed(0.01)
         .zoom_speed(0.01)
         .build();
@@ -128,18 +132,10 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
         ),
     );
 
+    let ground_obj = gen_ground(&context)?;
+
     let light = AmbientLight::new(&context, 0.1, Srgba::WHITE);
-    let point = PointLight::new(
-        &context,
-        10.,
-        Srgba::WHITE,
-        &Vec3::new(10., 0., -10.),
-        Attenuation {
-            constant: 0.,
-            linear: 0.,
-            quadratic: 0.,
-        },
-    );
+    let dir_light = DirectionalLight::new(&context, 1., Srgba::WHITE, &Vec3::new(-1., -0.5, 1.));
 
     let mut follow = true;
 
@@ -199,8 +195,9 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
         render_target
             .clear(ClearState::default())
             .render(&camera, &[&skybox], &[])
-            .render(&camera, &meshes, &[&light, &point])
-            .render(&camera, &[&grid_obj], &[]);
+            .render(&camera, &meshes, &[&light, &dir_light])
+            .render(&camera, &[&grid_obj], &[])
+            .render(&camera, &[&ground_obj], &[&light, &dir_light]);
 
         ui.render(&render_target);
 
