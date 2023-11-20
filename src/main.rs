@@ -35,7 +35,8 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
     .unwrap();
     let context = window.gl();
 
-    let mut physics = PhysicsSet::new();
+    let ground_width = 1000. * 10.;
+    let mut physics = PhysicsSet::new(ground_width);
 
     let vehicle = Vehicle::new(physics.new_body());
     let vehicle_pos = vehicle.pos(&physics.rigid_body_set);

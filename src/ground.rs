@@ -5,7 +5,8 @@ use crate::{
 use three_d::*;
 use three_d_asset::{Texture2D, TriMesh};
 
-pub(crate) fn gen_ground(context: &Context) -> Result<Gm<Mesh, PhysicalMaterial>, String> {
+pub(crate) fn gen_ground(context: &Context) -> Result<impl Object, String> {
+    let tile_size = 500.;
     let tex_size = 256;
     let bits = 8;
     let mut rng = Xor128::new(332324);
@@ -27,8 +28,26 @@ pub(crate) fn gen_ground(context: &Context) -> Result<Gm<Mesh, PhysicalMaterial>
     texture.data = TextureData::RgbF32(texture_data);
 
     let ground = TriMesh::square();
+    let instances = Instances {
+        transformations: (-10..=10)
+            .map(|x| {
+                (-10..=10).map(move |y| {
+                    Mat4::from_translation(Vec3::new(
+                        x as f32 * tile_size * 2.,
+                        0.,
+                        y as f32 * tile_size * 2.,
+                    ))
+                })
+            })
+            .flatten()
+            .collect(),
+        ..Default::default()
+    };
+
+    let instanced_mesh = InstancedMesh::new(context, &instances, &ground);
+
     let mut ground_obj = Gm::new(
-        Mesh::new(&context, &ground),
+        instanced_mesh,
         PhysicalMaterial::new(
             &context,
             &CpuMaterial {
@@ -44,7 +63,7 @@ pub(crate) fn gen_ground(context: &Context) -> Result<Gm<Mesh, PhysicalMaterial>
         ),
     );
     ground_obj.material.render_states.cull = Cull::Back;
-    ground_obj.set_transformation(Mat4::from_scale(500.) * Mat4::from_angle_x(Deg(-90.)));
+    ground_obj.set_transformation(Mat4::from_scale(tile_size) * Mat4::from_angle_x(Deg(-90.)));
 
     Ok(ground_obj)
 }

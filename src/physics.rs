@@ -17,12 +17,12 @@ pub(crate) struct PhysicsSet {
 }
 
 impl PhysicsSet {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(ground_width: f32) -> Self {
         let rigid_body_set = RigidBodySet::new();
         let mut collider_set = ColliderSet::new();
 
         /* Create the ground. */
-        let collider = ColliderBuilder::cuboid(500.0, 0.1, 500.0).build();
+        let collider = ColliderBuilder::cuboid(ground_width, 0.1, ground_width).build();
         collider_set.insert(collider);
 
         /* Create other structures necessary for the simulation. */
