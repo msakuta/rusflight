@@ -3,7 +3,7 @@
 
 A flight simulator in Rust, using [three-d](https://github.com/asny/three-d) and [rapier3d](https://github.com/dimforge/rapier).
 
-![screenshot](images/screenshot00.jpg)
+![screenshot](images/screenshot01.jpg)
 
 
 ## Controls
