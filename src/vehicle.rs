@@ -1,9 +1,15 @@
+use std::error::Error;
+
 use rapier3d::{
     na::{Rotation3, UnitQuaternion, Vector3},
     prelude::*,
 };
-use three_d::{Event, FrameInput, Key};
-use three_d_asset::{InnerSpace, Mat4, Quat, Vec3, Zero};
+use three_d::{Context, CpuMaterial, Cull, Event, FrameInput, Gm, Key, Mesh, PhysicalMaterial};
+use three_d_asset::{
+    GeometryFunction, InnerSpace, LightingModel, Mat4, NormalDistributionFunction, Quat, Vec3, Zero,
+};
+
+use crate::mqo::load_mqo_scale;
 
 pub(crate) struct Vehicle {
     pub body_handle: RigidBodyHandle,
@@ -263,6 +269,38 @@ impl Vehicle {
         } else if collision.stopped() {
             self.touching_ground = false;
         }
+    }
+
+    pub fn load_model(
+        mut model_src: &[u8],
+        context: &Context,
+    ) -> Result<Vec<Gm<Mesh, PhysicalMaterial>>, Box<dyn Error>> {
+        let models = load_mqo_scale(&mut model_src, None, 1. / 30.0, &|| ())?;
+        // let models = vec![uv_sphere(10)];
+        let meshes: Vec<_> = models
+            .iter()
+            .take(1)
+            .map(|model| {
+                let mut obj = Gm::new(
+                    Mesh::new(&context, model),
+                    PhysicalMaterial::new(
+                        &context,
+                        &CpuMaterial {
+                            roughness: 0.6,
+                            metallic: 0.6,
+                            lighting_model: LightingModel::Cook(
+                                NormalDistributionFunction::TrowbridgeReitzGGX,
+                                GeometryFunction::SmithSchlickGGX,
+                            ),
+                            ..Default::default()
+                        },
+                    ),
+                );
+                obj.material.render_states.cull = Cull::Back;
+                obj
+            })
+            .collect();
+        Ok(meshes)
     }
 }
 

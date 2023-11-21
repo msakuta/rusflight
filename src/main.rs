@@ -72,10 +72,6 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
         "assets/skybox_evening/top.jpg",
     ];
 
-    // for texture in &mut resources {
-    //     *texture = format!("assets/{}", texture);
-    // }
-
     let mut loaded = three_d_asset::io::load_async(&resources).await.unwrap();
 
     let top_tex = loaded.deserialize("top.jpg").unwrap();
@@ -87,34 +83,8 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
         &context, &right_tex, &left_tex, &top_tex, &top_tex, &front_tex, &back_tex,
     );
 
-    // let ident = Matrix4::identity();
-
-    let mut model_src = loaded.get("F15.mqo")?;
-    let models = load_mqo_scale(&mut model_src, None, 1. / 30.0, &|| ())?;
-    // let models = vec![uv_sphere(10)];
-    let mut meshes: Vec<_> = models
-        .iter()
-        .take(1)
-        .map(|model| {
-            let mut obj = Gm::new(
-                Mesh::new(&context, model),
-                PhysicalMaterial::new(
-                    &context,
-                    &CpuMaterial {
-                        roughness: 0.6,
-                        metallic: 0.6,
-                        lighting_model: LightingModel::Cook(
-                            NormalDistributionFunction::TrowbridgeReitzGGX,
-                            GeometryFunction::SmithSchlickGGX,
-                        ),
-                        ..Default::default()
-                    },
-                ),
-            );
-            obj.material.render_states.cull = Cull::Back;
-            obj
-        })
-        .collect();
+    let model_src = loaded.get("F15.mqo")?;
+    let mut meshes = Vehicle::load_model(&model_src, &context)?;
 
     let grid = grid_mesh(50, 50, 10., 0.1);
     let grid_obj = Gm::new(
