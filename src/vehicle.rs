@@ -4,9 +4,12 @@ use rapier3d::{
     na::{Rotation3, UnitQuaternion, Vector3},
     prelude::*,
 };
-use three_d::{Context, CpuMaterial, Cull, Event, FrameInput, Gm, Key, Mesh, PhysicalMaterial};
+use three_d::{
+    ColorMaterial, Context, CpuMaterial, Cull, Event, FrameInput, Gm, Key, Mesh, PhysicalMaterial,
+};
 use three_d_asset::{
-    GeometryFunction, InnerSpace, LightingModel, Mat4, NormalDistributionFunction, Quat, Vec3, Zero,
+    Deg, GeometryFunction, InnerSpace, LightingModel, Mat4, NormalDistributionFunction, Quat,
+    Srgba, TriMesh, Vec3, Zero,
 };
 
 use crate::mqo::load_mqo_scale;
@@ -41,6 +44,7 @@ impl Vehicle {
                 control: Control::Aileron,
                 sensitivity: -0.05 * PI,
                 axis: Vector::new(1., 0., 0.),
+                force: Vector::zero(),
             },
             Wing {
                 name: "MainLeft".to_string(),
@@ -49,6 +53,7 @@ impl Vehicle {
                 control: Control::Aileron,
                 sensitivity: 0.05 * PI,
                 axis: Vector::new(1., 0., 0.),
+                force: Vector::zero(),
             },
             Wing {
                 name: "TailRight".to_string(),
@@ -57,6 +62,7 @@ impl Vehicle {
                 control: Control::Elevator,
                 sensitivity: -0.1 * PI,
                 axis: Vector::new(1., 0., 0.),
+                force: Vector::zero(),
             },
             Wing {
                 name: "TailLeft".to_string(),
@@ -65,6 +71,7 @@ impl Vehicle {
                 control: Control::Elevator,
                 sensitivity: -0.1 * PI,
                 axis: Vector::new(1., 0., 0.),
+                force: Vector::zero(),
             },
             Wing {
                 name: "VerticalLeft".to_string(),
@@ -73,6 +80,7 @@ impl Vehicle {
                 control: Control::Rudder,
                 sensitivity: -0.15 * PI,
                 axis: Vector::new(0., 1., 0.),
+                force: Vector::zero(),
             },
             Wing {
                 name: "VerticalRight".to_string(),
@@ -81,6 +89,7 @@ impl Vehicle {
                 control: Control::Rudder,
                 sensitivity: -0.15 * PI,
                 axis: Vector::new(0., 1., 0.),
+                force: Vector::zero(),
             },
         ];
 
@@ -189,7 +198,7 @@ impl Vehicle {
             self.rudder = (self.rudder - delta_time as f32).max(-1.);
         }
         let invrot = body.rotation().inverse();
-        for wing in &self.wings {
+        for wing in &mut self.wings {
             let control = match wing.control {
                 Control::Aileron => self.aileron,
                 Control::Elevator => self.elevator,
@@ -212,13 +221,14 @@ impl Vehicle {
             let relpos = body.rotation().transform_vector(&wing.pos);
             let torque = global_drag.cross(&relpos);
             body.apply_torque_impulse(torque, true);
+            wing.force = global_drag;
         }
         if self.touching_ground {
             let torque = Vector3::new(0., 300. * self.thrust * self.rudder, 0.);
             let global_torque = body.rotation().transform_vector(&torque);
             body.apply_torque_impulse(global_torque, true);
         }
-        let impulse = Vector3::new(0., 0., 500. * self.thrust);
+        let impulse = Vector3::new(0., 0., -500. * self.thrust);
         let forward_impulse = body.rotation().transform_vector(&impulse);
         body.apply_impulse(forward_impulse, true);
     }
@@ -304,6 +314,84 @@ impl Vehicle {
     }
 }
 
+pub(crate) struct ControlMesh {
+    pub surface: Gm<Mesh, ColorMaterial>,
+    pub arrow: Gm<Mesh, ColorMaterial>,
+    pub transform: Mat4,
+    pub pos: Vec3,
+}
+
+impl Vehicle {
+    pub fn control_meshes(&self, context: &Context) -> Vec<ControlMesh> {
+        self.wings
+            .iter()
+            .map(|wing| {
+                let surface_mesh = TriMesh::square();
+                let mut surface = Gm::new(
+                    Mesh::new(&context, &surface_mesh),
+                    ColorMaterial::new(
+                        &context,
+                        &CpuMaterial {
+                            albedo: Srgba {
+                                r: 0,
+                                g: 255,
+                                b: 0,
+                                a: 200,
+                            },
+                            ..Default::default()
+                        },
+                    ),
+                );
+                let arrow_mesh = TriMesh::arrow(0.8, 0.5, 8);
+                let mut arrow = Gm::new(
+                    Mesh::new(&context, &arrow_mesh),
+                    ColorMaterial::new(
+                        &context,
+                        &CpuMaterial {
+                            roughness: 0.6,
+                            metallic: 0.6,
+                            lighting_model: LightingModel::Cook(
+                                NormalDistributionFunction::TrowbridgeReitzGGX,
+                                GeometryFunction::SmithSchlickGGX,
+                            ),
+                            albedo: Srgba {
+                                r: 0,
+                                g: 255,
+                                b: 255,
+                                a: 255,
+                            },
+                            ..Default::default()
+                        },
+                    ),
+                );
+                let pos = wing.pos;
+                let pos2 = Vec3::new(pos.x, pos.y, pos.z);
+                let rot = match wing.control {
+                    Control::Aileron | Control::Elevator => Mat4::from_angle_x(Deg(90.)),
+                    Control::Rudder => Mat4::from_angle_y(Deg(90.)),
+                    _ => Mat4::from_scale(1.),
+                };
+                let transform = Mat4::from_translation(pos2) * rot;
+                surface.set_transformation(transform);
+                ControlMesh {
+                    surface,
+                    arrow,
+                    transform,
+                    pos: pos2,
+                }
+            })
+            .collect()
+    }
+
+    pub fn wing_forces<'a>(&'a self) -> impl Iterator<Item = Vec3> + 'a {
+        self.wings.iter().map(|wing| {
+            let v = wing.force;
+            Vec3::new(v.x, v.y, v.z)
+            // Vec3::new(10., 10., 10.)
+        })
+    }
+}
+
 /// Control surface definition.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Control {
@@ -319,6 +407,7 @@ struct Wing {
     pos: Vector3<f32>,
     /// The aerodynamic tensor, defines how force is applied to the wing.
     aero: Matrix<f32>,
+    #[allow(dead_code)]
     /// Name of the wing, just for debugging
     name: String,
     control: Control,
@@ -326,6 +415,8 @@ struct Wing {
     axis: Vector<f32>,
     /// Sensitivity of this control surface when this surface is manipulated.
     sensitivity: f32,
+    /// Cached force from previous frame for visualization
+    force: Vector<f32>,
 }
 
 const MAIN_WING_TENSOR: Matrix<f32> = Matrix::new(-0.1, 0., 0., 0., -6.5, 0., 0., -0.6, -0.025);

@@ -85,6 +85,7 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
 
     let model_src = loaded.get("F15.mqo")?;
     let mut meshes = Vehicle::load_model(&model_src, &context)?;
+    let mut control_meshes = vehicle.borrow().control_meshes(&context);
 
     let grid = grid_mesh(50, 50, 10., 0.1);
     let grid_obj = Gm::new(
@@ -131,8 +132,42 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
             transform = vehicle.transform(&physics.rigid_body_set);
         }
 
+        fn unrotate(transform: &Mat4) -> Mat4 {
+            let rot_transform = Mat4::from_cols(
+                transform.x,
+                transform.y,
+                transform.z,
+                Vec4::new(0., 0., 0., 1.),
+            );
+            rot_transform.inverse_transform().unwrap()
+        }
+
+        let inv_rot_transform = unrotate(&transform);
+        let rot_y = Mat4::from_angle_y(Deg(90.));
+
         for mesh in &mut meshes {
-            mesh.set_transformation(transform);
+            mesh.set_transformation(transform * Mat4::from_angle_y(Deg(180.)));
+        }
+        for (meshes, force) in control_meshes
+            .iter_mut()
+            .zip(vehicle.borrow().wing_forces())
+        {
+            meshes
+                .surface
+                .set_transformation(transform * meshes.transform);
+            meshes.arrow.set_transformation(
+                transform
+                    * meshes.transform
+                    * unrotate(&meshes.transform)
+                    * inv_rot_transform
+                    * Mat4::look_at_lh(
+                        Point3::new(0., 0., 0.),
+                        Point3::from_vec(force),
+                        Vec3::new(0., 1., 0.),
+                    )
+                    * rot_y // Turn x unit vector into z unit vector
+                    * Mat4::from_nonuniform_scale(force.magnitude(), 0.1, 0.1),
+            );
         }
 
         let viewport = Viewport {
@@ -166,12 +201,18 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
 
         dir_light.generate_shadow_map(256, &meshes);
 
+        let c_objs = control_meshes
+            .iter()
+            .map(|c| [&c.surface, &c.arrow].into_iter())
+            .flatten();
+
         render_target
             .clear(ClearState::default())
             .render(&camera, &[&skybox], &[])
             .render(&camera, &meshes, &[&light, &dir_light])
             .render(&camera, &[&grid_obj], &[])
-            .render(&camera, &[&ground_obj], &[&light, &dir_light]);
+            .render(&camera, &[&ground_obj], &[&light, &dir_light])
+            .render(&camera, c_objs, &[]);
 
         ui.render(&render_target);
 
