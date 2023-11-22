@@ -14,6 +14,8 @@ use three_d_asset::{
 
 use crate::mqo::load_mqo_scale;
 
+pub(crate) const VEHICLE_POSITION: Vector<f32> = vector![0.0, 200.0, 0.0];
+
 pub(crate) struct Vehicle {
     pub body_handle: RigidBodyHandle,
     pub collider_handle: ColliderHandle,
@@ -227,10 +229,7 @@ impl Vehicle {
 
     pub fn reset(&mut self, rigid_body_set: &mut RigidBodySet) {
         let body = &mut rigid_body_set[self.body_handle];
-        body.set_position(
-            Isometry::new(Vector3::new(0., 20., 0.), Vector3::zero()),
-            true,
-        );
+        body.set_position(Isometry::new(VEHICLE_POSITION, Vector3::zero()), true);
         body.set_rotation(UnitQuaternion::identity(), true);
     }
 

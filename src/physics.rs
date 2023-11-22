@@ -53,10 +53,10 @@ impl PhysicsSet {
         }
     }
 
-    pub(crate) fn new_body(&mut self) -> (RigidBodyHandle, ColliderHandle) {
+    pub(crate) fn new_body(&mut self, position: Vector<f32>) -> (RigidBodyHandle, ColliderHandle) {
         /* Create the bounding ball. */
         let rigid_body = RigidBodyBuilder::dynamic()
-            .translation(vector![0.0, 200.0, 0.0])
+            .translation(position)
             .linear_damping(0.001)
             .build();
         let collider = ColliderBuilder::cuboid(13.06 * 0.5, 5.64 * 0.5, 19.43 * 0.5)

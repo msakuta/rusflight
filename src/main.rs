@@ -17,7 +17,7 @@ use ground::gen_ground;
 use mqo::load_mqo_scale;
 use three_d::*;
 use ui::Ui;
-use vehicle::Vehicle;
+use vehicle::{Vehicle, VEHICLE_POSITION};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<(dyn std::error::Error + 'static)>> {
@@ -38,7 +38,7 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
     let ground_width = 1000. * 10.;
     let mut physics = PhysicsSet::new(ground_width);
 
-    let vehicle = Vehicle::new(physics.new_body());
+    let vehicle = Vehicle::new(physics.new_body(VEHICLE_POSITION));
     let vehicle_pos = vehicle.pos(&physics.rigid_body_set);
     let vehicle = Rc::new(RefCell::new(vehicle));
     let vehicle2 = vehicle.clone();
