@@ -119,87 +119,60 @@ impl Vehicle {
         rigid_body_set: &mut RigidBodySet,
         frame_input: &FrameInput,
     ) {
-        let body = &mut rigid_body_set[self.body_handle];
-        for e in &frame_input.events {
-            match e {
-                Event::KeyPress { kind: Key::Q, .. } => {
-                    self.thrust_increase = true;
+        macro_rules! handle_keys {
+            ($($field:ident => $key:path),* $(,)?) => {
+                for e in &frame_input.events {
+                    match e {
+                        $(
+                            Event::KeyPress { kind: $key, .. } => {
+                                self.$field = true;
+                            }
+                            Event::KeyRelease { kind: $key, .. } => {
+                                self.$field = false;
+                            }
+                        )*
+                        _ => {}
+                    }
                 }
-                Event::KeyRelease { kind: Key::Q, .. } => {
-                    self.thrust_increase = false;
-                }
-                Event::KeyPress { kind: Key::Z, .. } => {
-                    self.thrust_decrease = true;
-                }
-                Event::KeyRelease { kind: Key::Z, .. } => {
-                    self.thrust_decrease = false;
-                }
-                Event::KeyPress { kind: Key::A, .. } => {
-                    self.aileron_increase = true;
-                }
-                Event::KeyRelease { kind: Key::A, .. } => {
-                    self.aileron_increase = false;
-                }
-                Event::KeyPress { kind: Key::D, .. } => {
-                    self.aileron_decrease = true;
-                }
-                Event::KeyRelease { kind: Key::D, .. } => {
-                    self.aileron_decrease = false;
-                }
-                Event::KeyPress { kind: Key::W, .. } => {
-                    self.elevator_increase = true;
-                }
-                Event::KeyRelease { kind: Key::W, .. } => {
-                    self.elevator_increase = false;
-                }
-                Event::KeyPress { kind: Key::S, .. } => {
-                    self.elevator_decrease = true;
-                }
-                Event::KeyRelease { kind: Key::S, .. } => {
-                    self.elevator_decrease = false;
-                }
-                Event::KeyPress { kind: Key::X, .. } => {
-                    self.rudder_increase = true;
-                }
-                Event::KeyRelease { kind: Key::X, .. } => {
-                    self.rudder_increase = false;
-                }
-                Event::KeyPress { kind: Key::C, .. } => {
-                    self.rudder_decrease = true;
-                }
-                Event::KeyRelease { kind: Key::C, .. } => {
-                    self.rudder_decrease = false;
-                }
-                _ => {}
             }
         }
+
+        handle_keys! {
+            thrust_increase => Key::Q,
+            thrust_decrease => Key::Z,
+            aileron_increase => Key::A,
+            aileron_decrease => Key::D,
+            elevator_increase => Key::W,
+            elevator_decrease => Key::S,
+            rudder_increase => Key::X,
+            rudder_decrease => Key::C,
+        }
+
+        let body = &mut rigid_body_set[self.body_handle];
         if delta_time == 0. {
             return; // Handle key events and skip computing physics if paused
         }
-        if self.thrust_increase {
-            self.thrust = (self.thrust + delta_time as f32).min(1.);
+
+        macro_rules! handle_holds {
+            ($([$field:ident => ($incr:ident, $decr:ident) ($min:literal, $max:literal)]),* $(,)?) => {
+                $(
+                    if self.$incr {
+                        self.$field = (self.$field + delta_time as f32).min($max);
+                    }
+                    if self.$decr {
+                        self.$field = (self.$field - delta_time as f32).max($min);
+                    }
+                )*
+            }
         }
-        if self.thrust_decrease {
-            self.thrust = (self.thrust - delta_time as f32).max(0.);
+
+        handle_holds! {
+            [thrust => (thrust_increase, thrust_decrease) (0., 1.)],
+            [aileron => (aileron_increase, aileron_decrease) (-1., 1.)],
+            [elevator => (elevator_increase, elevator_decrease) (-1., 1.)],
+            [rudder => (rudder_increase, rudder_decrease) (-1., 1.)],
         }
-        if self.aileron_increase {
-            self.aileron = (self.aileron + delta_time as f32).min(1.);
-        }
-        if self.aileron_decrease {
-            self.aileron = (self.aileron - delta_time as f32).max(-1.);
-        }
-        if self.elevator_increase {
-            self.elevator = (self.elevator + delta_time as f32).min(1.);
-        }
-        if self.elevator_decrease {
-            self.elevator = (self.elevator - delta_time as f32).max(-1.);
-        }
-        if self.rudder_increase {
-            self.rudder = (self.rudder + delta_time as f32).min(1.);
-        }
-        if self.rudder_decrease {
-            self.rudder = (self.rudder - delta_time as f32).max(-1.);
-        }
+
         let invrot = body.rotation().inverse();
         for wing in &mut self.wings {
             let control = match wing.control {
