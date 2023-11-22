@@ -173,6 +173,9 @@ impl Vehicle {
                 _ => {}
             }
         }
+        if delta_time == 0. {
+            return; // Handle key events and skip computing physics if paused
+        }
         if self.thrust_increase {
             self.thrust = (self.thrust + delta_time as f32).min(1.);
         }

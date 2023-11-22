@@ -111,16 +111,23 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
         DirectionalLight::new(&context, 1., Srgba::WHITE, &Vec3::new(-1., -0.5, 1.));
 
     let mut follow = true;
+    let mut paused = false;
 
     // main loop
     window.render_loop(move |mut frame_input| {
-        physics.step();
+        if !paused {
+            physics.step();
+        }
 
         let transform;
         {
             let mut vehicle = vehicle.borrow_mut();
             vehicle.update(
-                frame_input.elapsed_time * 1e-3,
+                if paused {
+                    0.
+                } else {
+                    frame_input.elapsed_time * 1e-3
+                },
                 &mut physics.rigid_body_set,
                 &frame_input,
             );
@@ -183,6 +190,8 @@ pub async fn run<'src>() -> Result<(), Box<dyn Error>> {
                     follow = !follow;
                 } else if *kind == Key::R {
                     vehicle.borrow_mut().reset(&mut physics.rigid_body_set);
+                } else if *kind == Key::P {
+                    paused = !paused;
                 }
             }
         }
